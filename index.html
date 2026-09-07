@@ -308,7 +308,7 @@
   // ==========================================================
   // НАЛАШТУВАННЯ 1: URL вашого Apps Script
   // ==========================================================
-  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxMkWcaH7L3Ya_ZmCt65Dh3RzE-CR-X8rqoxxYLI8_B9HDlQaOJXiSolXfSdl3SOw34/exec";
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxViAElLXMJOXcw32oaE8ODEJt7f4Gr4W6FKbEH_KW1onTTwRoTMItckOXZK8Pzq59M2g/exec";
 
   // ==========================================================
   // НАЛАШТУВАННЯ 2: пароль (той самий, що і в Apps Script)
@@ -648,6 +648,9 @@
       if(data.status === 'already_on'){
         return { ok: false, reason: 'already_on', since: data.since, by: data.by };
       }
+      if(data.status === 'user_disabled'){
+        return { ok: false, reason: 'user_disabled' };
+      }
       return { ok: true };
     } finally {
       clearTimeout(timeout);
@@ -666,6 +669,15 @@
     alert('⚠️ Цей пост вже увімкнено кимось іншим' + who + '. Дубль не записано.');
   }
 
+  // Якщо адмін відключив цього користувача (Статус = "Відключено"
+  // в аркуші "Користувачі") — примусово виходимо з застосунку
+  // прямо на цьому телефоні, попереджаючи людину.
+  function handleForcedLogout(){
+    localStorage.removeItem(NAME_KEY);
+    alert('⛔ Вас відключено адміністратором. Зверніться до нього для повторного доступу.');
+    openGate('login');
+  }
+
   async function flushQueue(){
     let queue = loadQueue();
     if(queue.length === 0) return;
@@ -675,6 +687,8 @@
         const result = await sendToSheet(entry);
         if(!result.ok && result.reason === 'already_on'){
           handleAlreadyOn(entry.post, entry.device, result);
+        }else if(!result.ok && result.reason === 'user_disabled'){
+          handleForcedLogout();
         }
       }catch(e){
         remaining.push(entry);
@@ -717,6 +731,8 @@
 
       if(!result.ok && result.reason === 'already_on'){
         handleAlreadyOn(post, device, result);
+      }else if(!result.ok && result.reason === 'user_disabled'){
+        handleForcedLogout();
       }else{
         renderHistory();
         if(navigator.vibrate) navigator.vibrate(40);
