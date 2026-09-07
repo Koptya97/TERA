@@ -128,6 +128,7 @@
   .empty{ padding: 16px 14px; color: var(--muted); font-size: 13.5px; text-align:center; }
 
   footer{ padding: 6px 20px 18px; text-align:center; font-size: 11.5px; color: var(--muted); }
+  .app-version{ margin-top: 6px; font-size: 10.5px; color: var(--border); font-variant-numeric: tabular-nums; }
   .footer-user{ font-size: 12px; color: var(--text); margin-bottom: 4px; }
   .logout-link{ display:inline-block; text-align:center; font-size: 12px; color: var(--muted); text-decoration: underline; background:none; border:none; padding: 4px; margin: 2px auto 0; }
 
@@ -250,6 +251,7 @@
 
 <footer>
   Дані надсилаються у Google Таблицю
+  <div class="app-version" id="appVersion"></div>
 </footer>
 
 <div class="gate-overlay hidden" id="gateOverlay">
@@ -314,6 +316,15 @@
   // НАЛАШТУВАННЯ 2: пароль (той самий, що і в Apps Script)
   // ==========================================================
   const APP_CODE = "1111";
+
+  // ==========================================================
+  // ВЕРСІЯ ЗАСТОСУНКУ — показується дрібним написом внизу екрана.
+  // Збільшуйте це число щоразу, коли розміщуєте оновлений
+  // generator-app.zip на хостинг — так можна на око перевірити
+  // (запитавши людину, що написано внизу), чи в неї вже нова
+  // версія, чи ще стара закешована.
+  // ==========================================================
+  const APP_VERSION = "19";
 
   // ==========================================================
   // НАЛАШТУВАННЯ 3: ПОСТИ
@@ -923,6 +934,7 @@
   }
 
   // Початкове відображення
+  document.getElementById('appVersion').textContent = 'v' + APP_VERSION;
   renderAllStates();
   renderHistory();
   updatePendingNote();
