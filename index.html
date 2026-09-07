@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Генератор">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#14171a">
+<link rel="manifest" href="./manifest.json">
+<link rel="apple-touch-icon" href="./icon-apple-touch.png">
+<link rel="icon" href="./icon-192.png">
+<title>Генератор / РЕБ — контроль</title>
+<style>
+  :root{
+    --bg: #14171a; --panel: #1d2226; --panel-2: #23292e; --border: #343c42;
+    --text: #eceff1; --muted: #8b959c; --on: #34d399; --on-dim: #1c3a30;
+    --off: #f2603d; --off-dim: #3a2620;
+  }
+  *{ box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body{ height: 100%; }
+  body{
+    margin:0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    display:flex; flex-direction:column;
+    min-height: 100vh; min-height: 100dvh;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    overflow-x:hidden;
+  }
+  header{ padding: 22px 20px 8px; text-align:center; }
+  header h1{ margin:0; font-size: 19px; font-weight: 600; letter-spacing: 0.2px; }
+  header .clock-row{ display:flex; align-items:center; justify-content:center; gap:6px; margin-top:4px; }
+  header .clock{ font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  header .conn-dot{ width:7px; height:7px; border-radius:50%; background: var(--muted); flex:none; }
+  header .conn-dot.online{ background: var(--on); }
+  header .conn-dot.offline{ background: var(--off); }
+  header .header-user-row{
+    display:flex; align-items:center; justify-content:center; gap:10px;
+    margin-top: 6px; min-height: 24px;
+  }
+  header .header-user{ font-size: 13.5px; font-weight:700; color: var(--text); }
+  .header-logout-btn{
+    background:none; border:1px solid var(--border); color: var(--muted);
+    font-size: 11.5px; padding: 4px 10px; border-radius: 999px; cursor:pointer;
+    display:none;
+  }
+  .header-logout-btn.show{ display:inline-block; }
+
+  .conn-check-row{ display:flex; align-items:center; justify-content:center; gap:8px; margin-top:2px; }
+  .conn-check-btn{
+    background:none; border:1px solid var(--border); color: var(--muted);
+    font-size: 11.5px; padding: 5px 10px; border-radius: 999px; cursor:pointer;
+  }
+  .conn-check-result{ font-size: 11.5px; min-height: 14px; }
+  .conn-check-result.ok{ color: var(--on); }
+  .conn-check-result.fail{ color: var(--off); }
+
+  main{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; padding: 12px 20px 0; gap: 16px; }
+
+  .selector-card{ width:100%; max-width: 420px; background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 14px; display:flex; flex-direction:column; gap: 10px; }
+  .field{ display:flex; flex-direction:column; gap: 6px; }
+  .field label{ font-size: 11.5px; color: var(--muted); font-weight: 600; }
+  .select-wrap{ position:relative; }
+  .select-wrap svg{ position:absolute; right: 14px; top: 50%; transform: translateY(-50%); width: 14px; height:14px; color: var(--muted); pointer-events:none; }
+  select{
+    appearance:none; -webkit-appearance:none; width:100%;
+    background: var(--panel-2); border: 1px solid var(--border); color: var(--text);
+    font-size: 16px; font-weight: 700; padding: 14px 36px 14px 14px; border-radius: 12px; font-family: inherit;
+  }
+  select:focus{ outline: 2px solid var(--on-dim); outline-offset: 1px; }
+  select:disabled{ opacity: 0.55; }
+  .lock-note{ font-size: 12px; color: #e0a63f; text-align:center; line-height: 1.4; display:none; }
+  .lock-note.show{ display:block; }
+
+  .device-card{ width:100%; max-width: 420px; background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 14px; display:flex; flex-direction:column; gap: 12px; }
+  .device-head{ display:flex; align-items:center; justify-content:space-between; gap: 10px; }
+  .device-title{ font-size: 15.5px; font-weight: 700; }
+  .device-status{ display:flex; align-items:center; gap: 7px; font-size: 12.5px; color: var(--muted); text-align:right; }
+  .device-status .dot{ width:8px; height:8px; border-radius:50%; background: var(--muted); flex:none; }
+  .device-status.is-on .dot{ background: var(--on); }
+  .device-status.is-off .dot{ background: var(--off); }
+  .device-status .state-word{ font-weight:700; color: var(--text); }
+  .device-status .warn-word{ color: #e0a63f !important; }
+
+  .device-buttons{ display:flex; gap: 10px; }
+  button.action{
+    appearance:none; border:none; border-radius: 14px; padding: 16px 8px; font-size: 14.5px; font-weight: 700;
+    letter-spacing: 0.1px; color: #0d1310; flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap: 6px;
+    transition: transform .12s ease, opacity .2s ease, filter .2s ease;
+  }
+  button.action:active{ transform: scale(0.97); }
+  button.action:disabled{ opacity: 0.32; filter: grayscale(0.4); }
+  button.action svg{ width:18px; height:18px; flex:none; }
+  .btn-on{ background: var(--on); color:#04231a; }
+  .btn-off{ background: var(--off); color:#2a0f05; }
+
+  .pending-note{ width:100%; max-width: 420px; text-align:center; font-size: 12.5px; color: var(--muted); min-height: 16px; }
+  .pending-note.show-warn{ color: #e0a63f; }
+
+  section.history{ width:100%; max-width: 420px; margin: 4px auto 18px; padding: 0 20px; }
+  .history h2{ font-size: 12.5px; color: var(--muted); font-weight: 600; margin: 0 0 8px; }
+  .history ul{ list-style:none; margin:0; padding:0; background: var(--panel); border: 1px solid var(--border); border-radius: 14px; overflow:hidden; }
+  .history li{ display:flex; align-items:center; justify-content:space-between; gap: 10px; padding: 12px 14px; font-size: 14px; border-bottom: 1px solid var(--border); }
+  .history li:last-child{ border-bottom:none; }
+  .history li .tag{ display:flex; align-items:center; gap:8px; min-width:0; }
+  .history li .tag .dot{ width:8px; height:8px; border-radius:50%; flex:none; }
+  .history li.on .dot{ background: var(--on); }
+  .history li.off .dot{ background: var(--off); }
+  .history li .tag .txt{ display:flex; flex-direction:column; min-width:0; }
+  .history li .tag .gen{ font-size: 12px; color: var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width: 175px; }
+  .history li .time{ color: var(--muted); font-variant-numeric: tabular-nums; font-size: 12.5px; text-align:right; flex:none; }
+  .history li .unsent{ margin-left:8px; font-size: 11px; color: #e0a63f; }
+  .empty{ padding: 16px 14px; color: var(--muted); font-size: 13.5px; text-align:center; }
+
+  footer{ padding: 6px 20px 18px; text-align:center; font-size: 11.5px; color: var(--muted); }
+  .footer-user{ font-size: 12px; color: var(--text); margin-bottom: 4px; }
+  .logout-link{ display:inline-block; text-align:center; font-size: 12px; color: var(--muted); text-decoration: underline; background:none; border:none; padding: 4px; margin: 2px auto 0; }
+
+  .install-banner{
+    position: fixed; left: 12px; right: 12px; bottom: 12px; z-index: 50;
+    background: var(--panel-2); border: 1px solid var(--border); border-radius: 16px;
+    padding: 14px 14px 14px 16px; display:flex; align-items:center; gap: 12px;
+    box-shadow: 0 10px 30px -8px rgba(0,0,0,0.5); transform: translateY(140%); transition: transform .35s ease;
+  }
+  .install-banner.show{ transform: translateY(0); }
+  .install-banner .icon{ width: 38px; height:38px; flex:none; border-radius: 10px; background: var(--bg); display:flex; align-items:center; justify-content:center; }
+  .install-banner .icon svg{ width:20px; height:20px; color: var(--on); }
+  .install-banner .txt{ flex:1; min-width:0; }
+  .install-banner .txt .t1{ font-size: 13.5px; font-weight:700; }
+  .install-banner .txt .t2{ font-size: 12px; color: var(--muted); margin-top:2px; line-height:1.35; }
+  .install-banner .txt .t2 b{ color: var(--text); }
+  .install-banner .close{ flex:none; width: 26px; height:26px; border-radius:50%; background: transparent; border:none; color: var(--muted); font-size: 18px; line-height:1; cursor:pointer; }
+  .install-banner button.install-btn{ flex:none; background: var(--on); color: #04231a; border:none; border-radius: 10px; padding: 9px 14px; font-weight:700; font-size: 13px; }
+  .ios-hint-icon{ display:inline-flex; vertical-align:-6px; width:18px; height:18px; margin: 0 2px; }
+
+  .confirm-overlay{
+    position: fixed; inset: 0; background: rgba(8,10,12,0.6); backdrop-filter: blur(2px);
+    display:flex; align-items:flex-end; justify-content:center; z-index: 100;
+    opacity:0; pointer-events:none; transition: opacity .2s ease; padding: 0 12px env(safe-area-inset-bottom);
+  }
+  .confirm-overlay.show{ opacity:1; pointer-events:auto; }
+  .confirm-sheet{
+    width:100%; max-width: 420px; background: var(--panel-2); border: 1px solid var(--border);
+    border-radius: 20px 20px 0 0; padding: 20px 18px calc(18px + env(safe-area-inset-bottom));
+    transform: translateY(16px); transition: transform .25s ease;
+  }
+  .confirm-overlay.show .confirm-sheet{ transform: translateY(0); }
+  .confirm-sheet .grabber{ width: 36px; height:4px; border-radius:2px; background: var(--border); margin: 0 auto 16px; }
+  .confirm-sheet .q-title{ font-size: 16px; font-weight: 700; text-align:center; margin-bottom: 6px; }
+  .confirm-sheet .q-detail{ font-size: 13.5px; color: var(--muted); text-align:center; line-height: 1.5; margin-bottom: 20px; }
+  .confirm-sheet .q-detail b{ color: var(--text); }
+  .confirm-actions{ display:flex; flex-direction:column; gap: 10px; }
+  .confirm-btn{ appearance:none; border:none; border-radius: 14px; padding: 16px; font-size: 16px; font-weight: 700; width:100%; }
+  .confirm-btn.yes-on{ background: var(--on); color:#04231a; }
+  .confirm-btn.yes-off{ background: var(--off); color:#2a0f05; }
+  .confirm-btn.cancel{ background: transparent; color: var(--muted); }
+
+  .gate-overlay{ position: fixed; inset: 0; background: var(--bg); z-index: 200; display:flex; align-items:center; justify-content:center; padding: 20px; overflow-y:auto; }
+  .gate-overlay.hidden{ display:none; }
+  .gate-card{ width:100%; max-width: 380px; background: var(--panel); border: 1px solid var(--border); border-radius: 20px; padding: 24px 20px; margin: auto; }
+  .gate-card h2{ margin: 0 0 6px; font-size: 18px; text-align:center; }
+  .gate-card .sub{ font-size: 13px; color: var(--muted); text-align:center; margin-bottom: 20px; line-height:1.4; }
+  .gate-field{ margin-bottom: 14px; }
+  .gate-field label{ display:block; font-size: 12px; color: var(--muted); font-weight:600; margin-bottom: 6px; }
+  .gate-field input{
+    width:100%; background: var(--panel-2); border: 1px solid var(--border); color: var(--text);
+    font-size: 16px; padding: 13px 12px; border-radius: 12px; font-family: inherit;
+  }
+  .gate-field input:focus{ outline: 2px solid var(--on-dim); outline-offset:1px; }
+  .gate-error{ font-size: 12.5px; color: var(--off); margin: -6px 0 12px; min-height: 16px; }
+  .gate-submit{ width:100%; background: var(--on); color: #04231a; border:none; border-radius: 14px; padding: 15px; font-size: 16px; font-weight:700; margin-top: 4px; }
+  .gate-submit:disabled{ opacity: 0.5; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Генератор / РЕБ</h1>
+  <div class="clock-row">
+    <span class="conn-dot" id="connDot"></span>
+    <div class="clock" id="clock">—</div>
+  </div>
+  <div class="header-user-row">
+    <div class="header-user" id="headerUser"></div>
+    <button class="header-logout-btn" id="logoutBtn">Вийти</button>
+  </div>
+  <div class="conn-check-row">
+    <button class="conn-check-btn" id="checkConnBtn">Перевірити з'єднання</button>
+    <span class="conn-check-result" id="checkConnResult"></span>
+  </div>
+</header>
+
+<main>
+  <div class="device-card" data-device="generator">
+    <div class="device-head">
+      <span class="device-title">Генератор</span>
+      <span class="device-status" id="statusGenerator"><span class="dot"></span><span class="state-word">—</span></span>
+    </div>
+    <div class="device-buttons">
+      <button class="action btn-on" id="btnGeneratorOn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 2v8"/><path d="M18.4 6.6a9 9 0 1 1-12.8 0"/></svg>
+        Увімкнути генератор
+      </button>
+      <button class="action btn-off" id="btnGeneratorOff">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"/></svg>
+        Вимкнути генератор
+      </button>
+    </div>
+  </div>
+
+  <div class="device-card" data-device="reb">
+    <div class="device-head">
+      <span class="device-title">РЕБ</span>
+      <span class="device-status" id="statusReb"><span class="dot"></span><span class="state-word">—</span></span>
+    </div>
+    <div class="device-buttons">
+      <button class="action btn-on" id="btnRebOn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 2v8"/><path d="M18.4 6.6a9 9 0 1 1-12.8 0"/></svg>
+        Увімкнути РЕБ
+      </button>
+      <button class="action btn-off" id="btnRebOff">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"/></svg>
+        Вимкнути РЕБ
+      </button>
+    </div>
+  </div>
+
+  <div class="pending-note" id="pendingNote"></div>
+</main>
+
+<section class="history">
+  <h2>Останні події (з цього телефону)</h2>
+  <ul id="historyList"><li class="empty" style="border:none;">Подій ще немає</li></ul>
+</section>
+
+<footer>
+  Дані надсилаються у Google Таблицю
+</footer>
+
+<div class="gate-overlay hidden" id="gateOverlay">
+  <div class="gate-card">
+    <h2 id="gateTitle">Вхід у застосунок</h2>
+    <div class="sub" id="gateSub">Введіть пароль, ім'я та прізвище — це потрібно лише один раз.</div>
+    <div class="gate-field" id="codeField">
+      <label for="codeInput">Пароль</label>
+      <input type="text" id="codeInput" inputmode="text" autocomplete="off" autocapitalize="off">
+    </div>
+    <div class="gate-field">
+      <label for="firstNameInput">Ім'я</label>
+      <input type="text" id="firstNameInput" autocomplete="off">
+    </div>
+    <div class="gate-field">
+      <label for="lastNameInput">Прізвище</label>
+      <input type="text" id="lastNameInput" autocomplete="off">
+    </div>
+    <div class="gate-field">
+      <label for="postSelectGate">Ваш пост</label>
+      <div class="select-wrap">
+        <select id="postSelectGate"></select>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+    </div>
+    <div class="gate-error" id="gateError"></div>
+    <button class="gate-submit" id="gateSubmitBtn">Продовжити</button>
+  </div>
+</div>
+
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-sheet">
+    <div class="grabber"></div>
+    <div class="q-title" id="confirmTitle">Підтвердіть дію</div>
+    <div class="q-detail" id="confirmDetail"></div>
+    <div class="confirm-actions">
+      <button class="confirm-btn" id="confirmYesBtn">Так</button>
+      <button class="confirm-btn cancel" id="confirmCancelBtn">Скасувати</button>
+    </div>
+  </div>
+</div>
+
+<div class="install-banner" id="installBanner">
+  <div class="icon">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>
+  </div>
+  <div class="txt" id="installBannerText">
+    <div class="t1">Встановити застосунок</div>
+    <div class="t2">На головний екран — щоб відкривати одним дотиком</div>
+  </div>
+  <button class="install-btn" id="installActionBtn" style="display:none;">Встановити</button>
+  <button class="close" id="installCloseBtn" aria-label="Закрити">×</button>
+</div>
+
+<script>
+  // ==========================================================
+  // НАЛАШТУВАННЯ 1: URL вашого Apps Script
+  // ==========================================================
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwzgRT69jdty8JZGsWLTsuLlmHbVpOmwH2fDqwD1G5tJMzo4MQnTIsjghCU0cP9k72gGw/exec";
+
+  // ==========================================================
+  // НАЛАШТУВАННЯ 2: пароль (той самий, що і в Apps Script)
+  // ==========================================================
+  const APP_CODE = "1111";
+
+  // ==========================================================
+  // НАЛАШТУВАННЯ 3: ПОСТИ
+  // Замініть приклад нижче на реальні назви 11 постів.
+  // ==========================================================
+  const POSTS = [
+    "Пост 1", "Пост 2", "Пост 3", "Пост 4", "Пост 5",
+    "Пост 6", "Пост 7", "Пост 8", "Пост 9", "Пост 10", "Пост 11"
+  ];
+
+  const DEVICES = { generator: { label: 'Генератор' }, reb: { label: 'РЕБ' } };
+
+  const NAME_KEY = 'generator_user_v3';
+  const CODE_OK_KEY = 'generator_code_ok_v3';
+  const STORAGE_KEY = "generator_log_v5";
+  const STATE_KEY = "generator_state_v5";
+  const QUEUE_KEY = "generator_queue_v5";
+
+  const historyList = document.getElementById('historyList');
+  const pendingNote = document.getElementById('pendingNote');
+  const clockEl = document.getElementById('clock');
+  const headerUser = document.getElementById('headerUser');
+  const connDot = document.getElementById('connDot');
+  const checkConnBtn = document.getElementById('checkConnBtn');
+  const checkConnResult = document.getElementById('checkConnResult');
+
+  const statusEls = { generator: document.getElementById('statusGenerator'), reb: document.getElementById('statusReb') };
+  const buttons = {
+    generator: { on: document.getElementById('btnGeneratorOn'), off: document.getElementById('btnGeneratorOff') },
+    reb: { on: document.getElementById('btnRebOn'), off: document.getElementById('btnRebOff') }
+  };
+
+  // ==========================================================
+  // Вхід: пароль + Ім'я + Прізвище (з перевіркою на сервері)
+  // ==========================================================
+  const gateOverlay = document.getElementById('gateOverlay');
+  const gateTitle = document.getElementById('gateTitle');
+  const gateSub = document.getElementById('gateSub');
+  const codeField = document.getElementById('codeField');
+  const codeInput = document.getElementById('codeInput');
+  const firstNameInput = document.getElementById('firstNameInput');
+  const lastNameInput = document.getElementById('lastNameInput');
+  const postSelectGate = document.getElementById('postSelectGate');
+  const gateError = document.getElementById('gateError');
+  const gateSubmitBtn = document.getElementById('gateSubmitBtn');
+  const logoutBtn = document.getElementById('logoutBtn');
+
+  function getUserData(){ try{ return JSON.parse(localStorage.getItem(NAME_KEY)) || null; }catch(e){ return null; } }
+  function getUserFullName(){ const u = getUserData(); return u ? (u.first + ' ' + u.last).trim() : ''; }
+  function getUserPost(){ const u = getUserData(); return u ? (u.post || '') : ''; }
+  function codeIsOk(){ return localStorage.getItem(CODE_OK_KEY) === '1'; }
+
+  function populatePostOptions(){
+    postSelectGate.innerHTML = POSTS.map(p => `<option value="${p}">${p}</option>`).join('');
+  }
+
+  function renderHeaderUser(){
+    const name = getUserFullName();
+    const post = getUserPost();
+    headerUser.textContent = name ? (name + (post ? ' · ' + post : '')) : '';
+    logoutBtn.classList.toggle('show', !!name);
+  }
+
+  function openGate(mode){
+    gateError.textContent = '';
+    firstNameInput.value = '';
+    lastNameInput.value = '';
+    populatePostOptions();
+    if(mode === 'login'){
+      gateTitle.textContent = 'Вхід';
+      gateSub.textContent = 'Введіть ваше ім\'я, прізвище та пост.';
+      codeField.style.display = 'none';
+    }else{
+      gateTitle.textContent = 'Вхід у застосунок';
+      gateSub.textContent = 'Введіть пароль, ім\'я, прізвище та ваш пост — це потрібно лише один раз.';
+      codeField.style.display = '';
+      codeInput.value = '';
+    }
+    gateOverlay.classList.remove('hidden');
+  }
+  function closeGate(){ gateOverlay.classList.add('hidden'); renderHeaderUser(); }
+
+  // Перевірка на сервері: реєстрація / вхід / дублікат / відключено.
+  // Якщо немає зв'язку — пропускаємо людину увійти офлайн (щоб не
+  // блокувати роботу через поганий сигнал), перевірка відбудеться,
+  // коли зв'язок з'явиться і хтось знову спробує авторизуватись.
+  async function authenticateUser(first, last, post){
+    if(!SCRIPT_URL || SCRIPT_URL.indexOf('ВСТАВТЕ') !== -1) return { ok: true };
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 7000);
+    try{
+      const res = await fetch(SCRIPT_URL, {
+        method: 'POST',
+        signal: controller.signal,
+        body: JSON.stringify({ type: 'auth', code: APP_CODE, first, last, post })
+      });
+      const data = await res.json();
+      if(data.status === 'ok') return { ok: true };
+      if(data.status === 'duplicate') return { ok: false, message: 'Користувач з таким ім\'ям і прізвищем вже активний у системі. Якщо це ви — вийдіть на іншому пристрої, або зверніться до адміністратора.' };
+      if(data.status === 'user_disabled') return { ok: false, message: 'Цього користувача відключено адміністратором.' };
+      if(data.status === 'wrong_code') return { ok: false, message: 'Невірний пароль.' };
+      return { ok: true };
+    }catch(err){
+      return { ok: true, offline: true };
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  gateSubmitBtn.addEventListener('click', async () => {
+    const isLoginMode = codeField.style.display === 'none';
+    const first = firstNameInput.value.trim();
+    const last = lastNameInput.value.trim();
+
+    if(!first || !last){
+      gateError.textContent = 'Заповніть ім\'я і прізвище.';
+      return;
+    }
+    const post = postSelectGate.value;
+    if(!post){
+      gateError.textContent = 'Оберіть ваш пост.';
+      return;
+    }
+    if(!isLoginMode){
+      const code = codeInput.value.trim();
+      if(code !== APP_CODE.trim()){
+        gateError.textContent = 'Невірний пароль.';
+        return;
+      }
+    }
+
+    gateError.textContent = '';
+    gateSubmitBtn.disabled = true;
+    gateSubmitBtn.textContent = 'Перевірка…';
+
+    const result = await authenticateUser(first, last, post);
+
+    gateSubmitBtn.disabled = false;
+    gateSubmitBtn.textContent = 'Продовжити';
+
+    if(!result.ok){
+      gateError.textContent = result.message || 'Не вдалося увійти.';
+      return;
+    }
+
+    if(!isLoginMode) localStorage.setItem(CODE_OK_KEY, '1');
+    localStorage.setItem(NAME_KEY, JSON.stringify({ first, last, post }));
+    closeGate();
+  });
+
+  logoutBtn.addEventListener('click', () => {
+    const post = getUserPost();
+    const states = loadAllStates();
+    const genOn = states[keyFor(post, 'generator')] && states[keyFor(post, 'generator')].action === 'on';
+    const rebOn = states[keyFor(post, 'reb')] && states[keyFor(post, 'reb')].action === 'on';
+    if(genOn || rebOn){
+      alert('⚠️ Спершу вимкніть генератор і РЕБ на цьому посту, потім виходьте.');
+      return;
+    }
+    const u = getUserData();
+    if(u){
+      // повідомляємо сервер, що ім'я звільняється (best-effort, без очікування)
+      fetch(SCRIPT_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        body: JSON.stringify({ type: 'logout', code: APP_CODE, first: u.first, last: u.last })
+      }).catch(() => {});
+    }
+    localStorage.removeItem(NAME_KEY);
+    openGate('login');
+  });
+
+  if(!codeIsOk()){
+    openGate('full');
+  }else if(!getUserFullName()){
+    openGate('login');
+  }else{
+    renderHeaderUser();
+  }
+
+  // ==========================================================
+  // Основна логіка
+  // ==========================================================
+  function fmtDateTime(d){
+    return d.toLocaleString('uk-UA', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit', second:'2-digit' });
+  }
+  function fmtTime(d){ return d.toLocaleTimeString('uk-UA', { hour:'2-digit', minute:'2-digit' }); }
+  function fmtDuration(ms){
+    const totalMinutes = Math.round(ms / 60000);
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    if(hours > 0) return hours + ' год ' + minutes + ' хв';
+    return minutes + ' хв';
+  }
+  function keyFor(post, device){ return post + '||' + device; }
+
+  function loadAllStates(){ try{ return JSON.parse(localStorage.getItem(STATE_KEY)) || {}; }catch(e){ return {}; } }
+  function saveAllStates(s){ localStorage.setItem(STATE_KEY, JSON.stringify(s)); }
+  function loadHistory(){ try{ return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }catch(e){ return []; } }
+  function saveHistory(list){ localStorage.setItem(STORAGE_KEY, JSON.stringify(list.slice(0, 80))); }
+  function loadQueue(){ try{ return JSON.parse(localStorage.getItem(QUEUE_KEY)) || []; }catch(e){ return []; } }
+  function saveQueue(q){ localStorage.setItem(QUEUE_KEY, JSON.stringify(q)); }
+
+  function renderDeviceState(device){
+    const post = getUserPost();
+    const states = loadAllStates();
+    const state = states[keyFor(post, device)];
+    const el = statusEls[device];
+    const wordEl = el.querySelector('.state-word');
+    const btnOn = buttons[device].on;
+    const btnOff = buttons[device].off;
+
+    el.classList.remove('is-on','is-off');
+    wordEl.classList.remove('warn-word');
+
+    if(!state){
+      wordEl.textContent = 'Невідомо';
+      btnOn.disabled = false;
+      btnOff.disabled = false;
+      return;
+    }
+    if(state.action === 'on'){
+      el.classList.add('is-on');
+      const elapsedMs = Date.now() - new Date(state.timestamp).getTime();
+      const isLong = elapsedMs > 24 * 60 * 60 * 1000;
+      wordEl.textContent = (isLong ? '⚠️ ' : '') + 'Увімкнено · вже ' + fmtDuration(Math.max(elapsedMs,0));
+      wordEl.classList.toggle('warn-word', isLong);
+      btnOn.disabled = true;
+      btnOff.disabled = false;
+    }else{
+      el.classList.add('is-off');
+      wordEl.textContent = 'Вимкнено · з ' + fmtTime(new Date(state.timestamp));
+      btnOn.disabled = false;
+      btnOff.disabled = true;
+    }
+  }
+
+  function renderAllStates(){
+    renderDeviceState('generator');
+    renderDeviceState('reb');
+  }
+
+  function renderHistory(){
+    const list = loadHistory();
+    const queue = loadQueue();
+    const pendingIds = new Set(queue.map(q => q.id));
+
+    if(list.length === 0){
+      historyList.innerHTML = '<li class="empty" style="border:none;">Подій ще немає</li>';
+      return;
+    }
+    historyList.innerHTML = list.map(item => {
+      const cls = item.action === 'on' ? 'on' : 'off';
+      const label = (item.action === 'on' ? 'Увімкнено' : 'Вимкнено') + ' · ' + DEVICES[item.device].label;
+      const unsent = pendingIds.has(item.id) ? '<span class="unsent">не відправлено</span>' : '';
+      return `<li class="${cls}">
+        <span class="tag"><span class="dot"></span><span class="txt"><span>${label}${unsent}</span><span class="gen">${item.post}</span></span></span>
+        <span class="time">${fmtDateTime(new Date(item.timestamp))}</span>
+      </li>`;
+    }).join('');
+  }
+
+  function updatePendingNote(){
+    const q = loadQueue();
+    if(q.length === 0){
+      pendingNote.textContent = '';
+      pendingNote.classList.remove('show-warn');
+    }else{
+      pendingNote.textContent = `Немає з'єднання — ${q.length} подій в черзі на відправку`;
+      pendingNote.classList.add('show-warn');
+    }
+  }
+
+  async function sendToSheet(entry){
+    if(!SCRIPT_URL || SCRIPT_URL.indexOf('ВСТАВТЕ') !== -1){
+      throw new Error('URL не налаштовано');
+    }
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    try{
+      const res = await fetch(SCRIPT_URL, {
+        method: 'POST',
+        signal: controller.signal,
+        body: JSON.stringify({
+          id: entry.id,
+          code: APP_CODE,
+          name: getUserFullName(),
+          action: entry.action,
+          timestamp: entry.timestamp,
+          post: entry.post,
+          device: DEVICES[entry.device].label
+        })
+      });
+      const data = await res.json();
+      if(data.status === 'already_on'){
+        return { ok: false, reason: 'already_on', since: data.since, by: data.by };
+      }
+      return { ok: true };
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  // Якщо сервер повідомив, що пост уже увімкнено кимось іншим —
+  // виправляємо локальний стан на реальний (а не залишаємо хибний)
+  // і повідомляємо людину, щоб уникнути плутанини.
+  function handleAlreadyOn(post, device, result){
+    const states = loadAllStates();
+    states[keyFor(post, device)] = { action: 'on', timestamp: new Date(result.since).toISOString() };
+    saveAllStates(states);
+    renderAllStates();
+    const who = result.by ? (' (' + result.by + ')') : '';
+    alert('⚠️ Цей пост вже увімкнено кимось іншим' + who + '. Дубль не записано.');
+  }
+
+  async function flushQueue(){
+    let queue = loadQueue();
+    if(queue.length === 0) return;
+    const remaining = [];
+    for(const entry of queue){
+      try{
+        const result = await sendToSheet(entry);
+        if(!result.ok && result.reason === 'already_on'){
+          handleAlreadyOn(entry.post, entry.device, result);
+        }
+      }catch(e){
+        remaining.push(entry);
+      }
+    }
+    saveQueue(remaining);
+    updatePendingNote();
+    renderHistory();
+  }
+
+  async function recordAction(device, action){
+    const post = getUserPost();
+    if(!post) return;
+
+    const timestamp = new Date().toISOString();
+    const id = Date.now() + '-' + Math.random().toString(36).slice(2,7);
+    const entry = { id, action, timestamp, post, device };
+
+    const states = loadAllStates();
+    states[keyFor(post, device)] = { action, timestamp };
+    saveAllStates(states);
+    renderAllStates();
+
+    const history = loadHistory();
+    history.unshift(entry);
+    saveHistory(history);
+
+    const queue = loadQueue();
+    queue.push(entry);
+    saveQueue(queue);
+
+    renderHistory();
+    updatePendingNote();
+
+    try{
+      const result = await sendToSheet(entry);
+      const q2 = loadQueue().filter(e => e.id !== id);
+      saveQueue(q2);
+      updatePendingNote();
+
+      if(!result.ok && result.reason === 'already_on'){
+        handleAlreadyOn(post, device, result);
+      }else{
+        renderHistory();
+        if(navigator.vibrate) navigator.vibrate(40);
+      }
+    }catch(e){
+      // залишається в черзі
+    }
+  }
+
+  // ==========================================================
+  // Індикатор зв'язку + перевірка з'єднання
+  // ==========================================================
+  function updateConnDot(){
+    connDot.classList.remove('online','offline');
+    connDot.classList.add(navigator.onLine ? 'online' : 'offline');
+  }
+  window.addEventListener('online', updateConnDot);
+  window.addEventListener('offline', updateConnDot);
+  updateConnDot();
+
+  checkConnBtn.addEventListener('click', async () => {
+    checkConnResult.textContent = 'Перевірка…';
+    checkConnResult.className = 'conn-check-result';
+    if(!SCRIPT_URL || SCRIPT_URL.indexOf('ВСТАВТЕ') !== -1){
+      checkConnResult.textContent = '❌ URL не налаштовано';
+      checkConnResult.classList.add('fail');
+      return;
+    }
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 7000);
+    try{
+      const res = await fetch(SCRIPT_URL, {
+        method: 'POST',
+        signal: controller.signal,
+        body: JSON.stringify({ type: 'ping', code: APP_CODE })
+      });
+      const data = await res.json();
+      if(data.status === 'ok'){
+        checkConnResult.textContent = '✅ Все працює';
+        checkConnResult.classList.add('ok');
+      }else if(data.status === 'wrong_code'){
+        checkConnResult.textContent = '❌ Невірний пароль в коді';
+        checkConnResult.classList.add('fail');
+      }else{
+        checkConnResult.textContent = '❌ Помилка на сервері';
+        checkConnResult.classList.add('fail');
+      }
+    }catch(err){
+      checkConnResult.textContent = '❌ Немає з\'єднання';
+      checkConnResult.classList.add('fail');
+    } finally {
+      clearTimeout(timeout);
+      setTimeout(() => { checkConnResult.textContent = ''; checkConnResult.className = 'conn-check-result'; }, 5000);
+    }
+  });
+
+  // ==========================================================
+  // Підтвердження дії
+  // ==========================================================
+  const confirmOverlay = document.getElementById('confirmOverlay');
+  const confirmTitle = document.getElementById('confirmTitle');
+  const confirmDetail = document.getElementById('confirmDetail');
+  const confirmYesBtn = document.getElementById('confirmYesBtn');
+  const confirmCancelBtn = document.getElementById('confirmCancelBtn');
+  let pendingConfirm = null;
+
+  function openConfirm(device, action){
+    const post = getUserPost();
+    if(!post) return;
+    const deviceLabel = DEVICES[device].label;
+    const actionLabel = action === 'on' ? 'увімкнути' : 'вимкнути';
+
+    confirmTitle.textContent = (action === 'on' ? 'Увімкнути' : 'Вимкнути') + ' ' + deviceLabel + '?';
+    confirmDetail.innerHTML = `Дію буде записано для:<br><b>${post}</b>`;
+    confirmYesBtn.className = 'confirm-btn ' + (action === 'on' ? 'yes-on' : 'yes-off');
+    confirmYesBtn.textContent = 'Так, ' + actionLabel;
+
+    pendingConfirm = { device, action };
+    confirmOverlay.classList.add('show');
+  }
+  function closeConfirm(){ confirmOverlay.classList.remove('show'); pendingConfirm = null; }
+
+  confirmYesBtn.addEventListener('click', () => {
+    if(pendingConfirm) recordAction(pendingConfirm.device, pendingConfirm.action);
+    closeConfirm();
+  });
+  confirmCancelBtn.addEventListener('click', closeConfirm);
+  confirmOverlay.addEventListener('click', (e) => { if(e.target === confirmOverlay) closeConfirm(); });
+
+  buttons.generator.on.addEventListener('click', () => openConfirm('generator', 'on'));
+  buttons.generator.off.addEventListener('click', () => openConfirm('generator', 'off'));
+  buttons.reb.on.addEventListener('click', () => openConfirm('reb', 'on'));
+  buttons.reb.off.addEventListener('click', () => openConfirm('reb', 'off'));
+
+  window.addEventListener('online', flushQueue);
+  document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible') flushQueue(); });
+  window.addEventListener('pageshow', flushQueue);
+  window.addEventListener('focus', flushQueue);
+  setInterval(() => { if(loadQueue().length > 0) flushQueue(); }, 20000);
+
+  function tickClock(){ clockEl.textContent = fmtDateTime(new Date()); }
+  setInterval(tickClock, 1000);
+  tickClock();
+  setInterval(renderAllStates, 30000);
+
+  // ==========================================================
+  // Встановлення на головний екран
+  // ==========================================================
+  const installBanner = document.getElementById('installBanner');
+  const installBannerText = document.getElementById('installBannerText');
+  const installActionBtn = document.getElementById('installActionBtn');
+  const installCloseBtn = document.getElementById('installCloseBtn');
+  const DISMISS_KEY = 'generator_install_dismissed_v1';
+
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  let deferredInstallPrompt = null;
+
+  function hideBanner(){ installBanner.classList.remove('show'); }
+  function dismissForever(){ localStorage.setItem(DISMISS_KEY, '1'); hideBanner(); }
+  installCloseBtn.addEventListener('click', dismissForever);
+
+  if(!isStandalone && !localStorage.getItem(DISMISS_KEY)){
+    if(isIOS){
+      installBannerText.innerHTML =
+        '<div class="t1">Встановити застосунок</div>' +
+        '<div class="t2">Натисніть <b>Поділитися</b> ' +
+        '<svg class="ios-hint-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"/><path d="M8 8l4-4 4 4"/><rect x="4" y="12" width="16" height="8" rx="2"/></svg>' +
+        ' знизу, тоді — <b>На екран Домівки</b></div>';
+      setTimeout(() => installBanner.classList.add('show'), 900);
+    }else{
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredInstallPrompt = e;
+        installActionBtn.style.display = 'inline-flex';
+        installBanner.classList.add('show');
+      });
+      installActionBtn.addEventListener('click', async () => {
+        if(!deferredInstallPrompt) return;
+        deferredInstallPrompt.prompt();
+        await deferredInstallPrompt.userChoice;
+        deferredInstallPrompt = null;
+        hideBanner();
+        localStorage.setItem(DISMISS_KEY, '1');
+      });
+      window.addEventListener('appinstalled', dismissForever);
+    }
+  }
+
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', () => { navigator.serviceWorker.register('./sw.js').catch(() => {}); });
+  }
+
+  // Початкове відображення
+  renderAllStates();
+  renderHistory();
+  updatePendingNote();
+  flushQueue();
+</script>
+
+</body>
+</html>
