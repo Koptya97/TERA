@@ -736,6 +736,7 @@
       }else{
         renderHistory();
         if(navigator.vibrate) navigator.vibrate(40);
+        if(action === 'on') playOnSound(); else playOffSound();
       }
     }catch(e){
       // залишається в черзі
@@ -790,6 +791,38 @@
   });
 
   // ==========================================================
+  // Звуковий сигнал при увімкненні/вимкненні (без файлів —
+  // генерується прямо в браузері, працює і офлайн).
+  // ==========================================================
+  let audioCtx = null;
+  function getAudioCtx(){
+    if(!audioCtx){
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if(!AC) return null;
+      audioCtx = new AC();
+    }
+    if(audioCtx.state === 'suspended') audioCtx.resume();
+    return audioCtx;
+  }
+  function playTone(freq, delayMs, durationMs){
+    const ctx = getAudioCtx();
+    if(!ctx) return;
+    const startAt = ctx.currentTime + delayMs / 1000;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.18, startAt);
+    gain.gain.exponentialRampToValueAtTime(0.0001, startAt + durationMs / 1000);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(startAt);
+    osc.stop(startAt + durationMs / 1000 + 0.05);
+  }
+  function playOnSound(){ playTone(740, 0, 130); playTone(1040, 110, 160); }
+  function playOffSound(){ playTone(600, 0, 130); playTone(380, 110, 180); }
+
+  // ==========================================================
   // Підтвердження дії
   // ==========================================================
   const confirmOverlay = document.getElementById('confirmOverlay');
@@ -816,6 +849,7 @@
   function closeConfirm(){ confirmOverlay.classList.remove('show'); pendingConfirm = null; }
 
   confirmYesBtn.addEventListener('click', () => {
+    getAudioCtx(); // розблокувати звук саме зараз, у відповідь на дотик
     if(pendingConfirm) recordAction(pendingConfirm.device, pendingConfirm.action);
     closeConfirm();
   });
