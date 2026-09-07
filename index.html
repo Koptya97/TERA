@@ -214,28 +214,28 @@
     <div class="device-buttons">
       <button class="action btn-on" id="btnGeneratorOn">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 2v8"/><path d="M18.4 6.6a9 9 0 1 1-12.8 0"/></svg>
-        Увімкнути генератор
+        Увімкнув генератор
       </button>
       <button class="action btn-off" id="btnGeneratorOff">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"/></svg>
-        Вимкнути генератор
+        Вимкнув генератор
       </button>
     </div>
   </div>
 
   <div class="device-card" data-device="reb">
     <div class="device-head">
-      <span class="device-title">РЕБ</span>
+      <span class="device-title">Л</span>
       <span class="device-status" id="statusReb"><span class="dot"></span><span class="state-word">—</span></span>
     </div>
     <div class="device-buttons">
       <button class="action btn-on" id="btnRebOn">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 2v8"/><path d="M18.4 6.6a9 9 0 1 1-12.8 0"/></svg>
-        Увімкнути РЕБ
+        Увімкнув Л
       </button>
       <button class="action btn-off" id="btnRebOff">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"/></svg>
-        Вимкнути РЕБ
+        Вимкнув Л
       </button>
     </div>
   </div>
@@ -308,7 +308,7 @@
   // ==========================================================
   // НАЛАШТУВАННЯ 1: URL вашого Apps Script
   // ==========================================================
-  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx38uF3po3cZ55pYIJZ9EQ5x7HKdZFaYAGlJ0ee6BVevwShu2zcgmNShWw9zjqC-TXKDQ/exec";
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz0Q0Er984uDaK7ZhLPIODuugjvT5B4DOlSkmbJJvuofNfrv_88u5KG4yW1gUhoP7NV0w/exec";
 
   // ==========================================================
   // НАЛАШТУВАННЯ 2: пароль (той самий, що і в Apps Script)
@@ -324,7 +324,7 @@
     "Пост 6", "Пост 7", "Пост 8", "Пост 9", "Пост 10", "Пост 11"
   ];
 
-  const DEVICES = { generator: { label: 'Генератор' }, reb: { label: 'РЕБ' } };
+  const DEVICES = { generator: { label: 'Генератор' }, reb: { label: 'Л' } };
 
   const NAME_KEY = 'generator_user_v3';
   const CODE_OK_KEY = 'generator_code_ok_v3';
@@ -472,7 +472,7 @@
     const genOn = states[keyFor(post, 'generator')] && states[keyFor(post, 'generator')].action === 'on';
     const rebOn = states[keyFor(post, 'reb')] && states[keyFor(post, 'reb')].action === 'on';
     if(genOn || rebOn){
-      alert('⚠️ Спершу вимкніть генератор і РЕБ на цьому посту, потім виходьте.');
+      alert('⚠️ Спершу вимкніть генератор і Л на цьому посту, потім виходьте.');
       return;
     }
     const u = getUserData();
