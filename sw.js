@@ -1,4 +1,4 @@
-const CACHE_NAME = 'generator-app-v14';
+const CACHE_NAME = 'generator-app-v16';
 const SHELL_FILES = [
   './index.html',
   './manifest.json',

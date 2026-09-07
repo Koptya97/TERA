@@ -36,23 +36,37 @@
   header .conn-dot.online{ background: var(--on); }
   header .conn-dot.offline{ background: var(--off); }
   header .header-user-row{
-    display:flex; align-items:center; justify-content:center; gap:10px;
-    margin-top: 6px; min-height: 24px;
+    display:flex; align-items:center; justify-content:center;
+    margin-top: 6px; min-height: 20px;
   }
   header .header-user{ font-size: 13.5px; font-weight:700; color: var(--text); }
-  .header-logout-btn{
-    background:none; border:1px solid var(--border); color: var(--muted);
-    font-size: 11.5px; padding: 4px 10px; border-radius: 999px; cursor:pointer;
-    display:none;
-  }
-  .header-logout-btn.show{ display:inline-block; }
 
-  .conn-check-row{ display:flex; align-items:center; justify-content:center; gap:8px; margin-top:2px; }
-  .conn-check-btn{
-    background:none; border:1px solid var(--border); color: var(--muted);
-    font-size: 11.5px; padding: 5px 10px; border-radius: 999px; cursor:pointer;
+  .header-actions{
+    display:flex; gap: 10px;
+    max-width: 420px; margin: 12px auto 0; padding: 0 20px;
   }
-  .conn-check-result{ font-size: 11.5px; min-height: 14px; }
+  .header-action-btn{
+    flex:1;
+    min-height: 46px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 700;
+    border-radius: 14px;
+    padding: 10px 12px;
+    cursor:pointer;
+  }
+  .header-action-btn.logout-variant{
+    display:none;
+    color: var(--off);
+    border-color: var(--off-dim);
+  }
+  .header-action-btn.logout-variant.show{ display:block; }
+
+  .conn-check-result{
+    font-size: 12.5px; min-height: 16px; text-align:center; margin-top: 8px;
+  }
   .conn-check-result.ok{ color: var(--on); }
   .conn-check-result.fail{ color: var(--off); }
 
@@ -183,12 +197,12 @@
   </div>
   <div class="header-user-row">
     <div class="header-user" id="headerUser"></div>
-    <button class="header-logout-btn" id="logoutBtn">Вийти</button>
   </div>
-  <div class="conn-check-row">
-    <button class="conn-check-btn" id="checkConnBtn">Перевірити з'єднання</button>
-    <span class="conn-check-result" id="checkConnResult"></span>
+  <div class="header-actions">
+    <button class="header-action-btn" id="checkConnBtn">Перевірити з'єднання</button>
+    <button class="header-action-btn logout-variant" id="logoutBtn">Вийти</button>
   </div>
+  <div class="conn-check-result" id="checkConnResult"></div>
 </header>
 
 <main>
@@ -294,7 +308,7 @@
   // ==========================================================
   // НАЛАШТУВАННЯ 1: URL вашого Apps Script
   // ==========================================================
-  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwzgRT69jdty8JZGsWLTsuLlmHbVpOmwH2fDqwD1G5tJMzo4MQnTIsjghCU0cP9k72gGw/exec";
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx38uF3po3cZ55pYIJZ9EQ5x7HKdZFaYAGlJ0ee6BVevwShu2zcgmNShWw9zjqC-TXKDQ/exec";
 
   // ==========================================================
   // НАЛАШТУВАННЯ 2: пароль (той самий, що і в Apps Script)
@@ -383,13 +397,14 @@
   function closeGate(){ gateOverlay.classList.add('hidden'); renderHeaderUser(); }
 
   // Перевірка на сервері: реєстрація / вхід / дублікат / відключено.
-  // Якщо немає зв'язку — пропускаємо людину увійти офлайн (щоб не
-  // блокувати роботу через поганий сигнал), перевірка відбудеться,
-  // коли зв'язок з'явиться і хтось знову спробує авторизуватись.
+  // На відміну від увімк/вимк (які завжди зберігаються локально
+  // й ніколи не блокуються поганим зв'язком), сам ВХІД — разова дія,
+  // тому тут перевірка ОБОВ'ЯЗКОВА: без відповіді сервера увійти не
+  // можна, інакше дублікати могли б проскочити повз перевірку.
   async function authenticateUser(first, last, post){
     if(!SCRIPT_URL || SCRIPT_URL.indexOf('ВСТАВТЕ') !== -1) return { ok: true };
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 7000);
+    const timeout = setTimeout(() => controller.abort(), 12000);
     try{
       const res = await fetch(SCRIPT_URL, {
         method: 'POST',
@@ -401,9 +416,9 @@
       if(data.status === 'duplicate') return { ok: false, message: 'Користувач з таким ім\'ям і прізвищем вже активний у системі. Якщо це ви — вийдіть на іншому пристрої, або зверніться до адміністратора.' };
       if(data.status === 'user_disabled') return { ok: false, message: 'Цього користувача відключено адміністратором.' };
       if(data.status === 'wrong_code') return { ok: false, message: 'Невірний пароль.' };
-      return { ok: true };
+      return { ok: false, message: 'Не вдалося перевірити дані. Спробуйте ще раз.' };
     }catch(err){
-      return { ok: true, offline: true };
+      return { ok: false, message: 'Немає з\'єднання з сервером. Перевірте інтернет і спробуйте ще раз — без цієї перевірки увійти не можна.' };
     } finally {
       clearTimeout(timeout);
     }
@@ -448,6 +463,7 @@
     if(!isLoginMode) localStorage.setItem(CODE_OK_KEY, '1');
     localStorage.setItem(NAME_KEY, JSON.stringify({ first, last, post }));
     closeGate();
+    syncPostStatus();
   });
 
   logoutBtn.addEventListener('click', () => {
@@ -495,6 +511,41 @@
     return minutes + ' хв';
   }
   function keyFor(post, device){ return post + '||' + device; }
+
+  // Синхронізує реальний стан генератора/РЕБ для поста людини з
+  // сервером — щоб усі, хто заходить на один і той самий пост
+  // (з різних телефонів), бачили однакову, актуальну картину, а не
+  // тільки те, що сталось з ЦЬОГО конкретного телефону.
+  async function syncPostStatus(){
+    const post = getUserPost();
+    if(!post || !SCRIPT_URL || SCRIPT_URL.indexOf('ВСТАВТЕ') !== -1) return;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    try{
+      const res = await fetch(SCRIPT_URL, {
+        method: 'POST',
+        signal: controller.signal,
+        body: JSON.stringify({ type: 'status', code: APP_CODE, post })
+      });
+      const data = await res.json();
+      if(data.status !== 'ok') return;
+
+      const states = loadAllStates();
+      ['generator','reb'].forEach((device) => {
+        const info = data[device];
+        if(info){
+          states[keyFor(post, device)] = { action: info.action, timestamp: new Date(info.timestamp).toISOString() };
+        }
+      });
+      saveAllStates(states);
+      renderAllStates();
+    }catch(err){
+      // фоновий синк, тихо ігноруємо помилки (немає зв'язку тощо)
+    }finally{
+      clearTimeout(timeout);
+    }
+  }
+
 
   function loadAllStates(){ try{ return JSON.parse(localStorage.getItem(STATE_KEY)) || {}; }catch(e){ return {}; } }
   function saveAllStates(s){ localStorage.setItem(STATE_KEY, JSON.stringify(s)); }
@@ -761,10 +812,12 @@
   buttons.reb.off.addEventListener('click', () => openConfirm('reb', 'off'));
 
   window.addEventListener('online', flushQueue);
-  document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible') flushQueue(); });
+  document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible'){ flushQueue(); syncPostStatus(); } });
   window.addEventListener('pageshow', flushQueue);
-  window.addEventListener('focus', flushQueue);
+  window.addEventListener('focus', () => { flushQueue(); syncPostStatus(); });
+  window.addEventListener('online', syncPostStatus);
   setInterval(() => { if(loadQueue().length > 0) flushQueue(); }, 20000);
+  setInterval(syncPostStatus, 25000);
 
   function tickClock(){ clockEl.textContent = fmtDateTime(new Date()); }
   setInterval(tickClock, 1000);
@@ -824,6 +877,7 @@
   renderHistory();
   updatePendingNote();
   flushQueue();
+  syncPostStatus();
 </script>
 
 </body>
